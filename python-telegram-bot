@@ -1,0 +1,102 @@
+import sqlite3
+import requests
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
+from telegram.ext import CallbackContext
+
+# 🔐 OpenRouter API kaliti
+OPENROUTER_API_KEY = "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"  # <-- O'zingizning API key
+MODEL = "openai/gpt-3.5-turbo"          # <-- Haqiqiy ChatGPT model
+
+# 📁 SQLite bazani ulash
+conn = sqlite3.connect("users.db", check_same_thread=False)
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    chat_id TEXT PRIMARY KEY,
+    full_name TEXT,
+    username TEXT,
+    last_message TEXT
+)
+""")
+conn.commit()
+
+# 🧠 OpenRouter orqali javob olish
+def ask_openrouter(user_message, chat_id):
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    messages = [
+        {"role": "system", "content": "You are a helpful, friendly, multilingual assistant. Reply in the user's language."},
+        {"role": "user", "content": user_message}
+    ]
+    payload = {
+        "model": MODEL,
+        "messages": messages
+    }
+    response = requests.post(url, headers=headers, json=payload)
+
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        print(f"❌ Xato: {response.status_code} — {response.text}")
+        return "Xatolik yuz berdi. Iltimos, keyinroq urinib ko‘ring."
+
+# 🧾 /start komandasi
+def start(update: Update, context: CallbackContext):
+    user = update.message.from_user
+    chat_id = update.message.chat.id
+    full_name = f"{user.first_name} {user.last_name or ''}".strip()
+    username = user.username if user.username else "yo'q"
+
+    cursor.execute("INSERT OR IGNORE INTO users (chat_id, full_name, username) VALUES (?, ?, ?)", (chat_id, full_name, username))
+    conn.commit()
+
+    keyboard = [
+        [KeyboardButton("📞 Contact yuborish", request_contact=True)],
+        [KeyboardButton("🧠 Savol berish")]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+    update.message.reply_text("Salom! Men sun’iy intellektli botman. Istalgan tilda savol berishingiz mumkin.", reply_markup=reply_markup)
+
+# 💬 Matnli xabarni OpenRouterga yuborish
+def handle_message(update: Update, context: CallbackContext):
+    user = update.message.from_user
+    chat_id = update.message.chat.id
+    text = update.message.text
+
+    reply = ask_openrouter(text, chat_id)
+    update.message.reply_text(reply)
+
+    cursor.execute("UPDATE users SET last_message = ? WHERE chat_id = ?", (text, chat_id))
+    conn.commit()
+
+# 📞 Contact yuborilganda
+def handle_contact(update: Update, context: CallbackContext):
+    contact = update.message.contact
+    phone = contact.phone_number
+    chat_id = update.message.chat.id
+
+    cursor.execute("ALTER TABLE users ADD COLUMN phone TEXT")  # faqat birinchi marta kerak
+    cursor.execute("UPDATE users SET phone = ? WHERE chat_id = ?", (phone, chat_id))
+    conn.commit()
+
+    update.message.reply_text("Telefon raqamingiz qabul qilindi. Rahmat!")
+
+# 🚀 Botni ishga tushirish
+def main():
+    updater = Updater("8344748602:AAHH9AwNRThIsYvOc2Sy3SZM30oTSWpUi8k", use_context=True)
+    dp = updater.dispatcher
+
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(MessageHandler(Filters.contact, handle_contact))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
