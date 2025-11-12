@@ -1,12 +1,11 @@
 import sqlite3
 import requests
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
-from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import CallbackContext
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext
 
 # 🔐 OpenRouter API kaliti
 OPENROUTER_API_KEY = "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"  # <-- O'zingizning API key
-MODEL = "openai/gpt-3.5-turbo"          # <-- Haqiqiy ChatGPT model
+MODEL = "openai/gpt-3.5-turbo"
 
 # 📁 SQLite bazani ulash
 conn = sqlite3.connect("users.db", check_same_thread=False)
@@ -29,7 +28,7 @@ def ask_openrouter(user_message, chat_id):
         "Content-Type": "application/json"
     }
     messages = [
-        {"role": "system", "content": "You are a helpful, friendly, multilingual assistant. Reply in the user's language."},
+        {"role": "system", "content": "You are a helpful, friendly assistant. Reply in English."},
         {"role": "user", "content": user_message}
     ]
     payload = {
@@ -41,32 +40,37 @@ def ask_openrouter(user_message, chat_id):
     if response.status_code == 200:
         return response.json()["choices"][0]["message"]["content"]
     else:
-        print(f"❌ Xato: {response.status_code} — {response.text}")
-        return "Xatolik yuz berdi. Iltimos, keyinroq urinib ko‘ring."
+        print(f"❌ Error: {response.status_code} — {response.text}")
+        return "Something went wrong. Please try again later."
 
 # 🧾 /start komandasi
 def start(update: Update, context: CallbackContext):
     user = update.message.from_user
     chat_id = update.message.chat.id
     full_name = f"{user.first_name} {user.last_name or ''}".strip()
-    username = user.username if user.username else "yo'q"
+    username = user.username if user.username else "unknown"
 
     cursor.execute("INSERT OR IGNORE INTO users (chat_id, full_name, username) VALUES (?, ?, ?)", (chat_id, full_name, username))
     conn.commit()
 
     keyboard = [
-        [KeyboardButton("📞 Contact yuborish", request_contact=True)],
-        [KeyboardButton("🧠 Savol berish")]
+        ["📩 Contact Admin", "💬 Send Feedback"]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-    update.message.reply_text("Salom! Men sun’iy intellektli botman. Istalgan tilda savol berishingiz mumkin.", reply_markup=reply_markup)
+    update.message.reply_text("Welcome! I'm your AI assistant. You can ask me anything in English.", reply_markup=reply_markup)
 
 # 💬 Matnli xabarni OpenRouterga yuborish
 def handle_message(update: Update, context: CallbackContext):
-    user = update.message.from_user
     chat_id = update.message.chat.id
     text = update.message.text
+
+    if text == "📩 Contact Admin":
+        update.message.reply_text("You can contact the admin at: @your_admin_username")
+        return
+    elif text == "💬 Send Feedback":
+        update.message.reply_text("Please type your feedback below. I’ll forward it to the team.")
+        return
 
     reply = ask_openrouter(text, chat_id)
     update.message.reply_text(reply)
@@ -74,25 +78,12 @@ def handle_message(update: Update, context: CallbackContext):
     cursor.execute("UPDATE users SET last_message = ? WHERE chat_id = ?", (text, chat_id))
     conn.commit()
 
-# 📞 Contact yuborilganda
-def handle_contact(update: Update, context: CallbackContext):
-    contact = update.message.contact
-    phone = contact.phone_number
-    chat_id = update.message.chat.id
-
-    cursor.execute("ALTER TABLE users ADD COLUMN phone TEXT")  # faqat birinchi marta kerak
-    cursor.execute("UPDATE users SET phone = ? WHERE chat_id = ?", (phone, chat_id))
-    conn.commit()
-
-    update.message.reply_text("Telefon raqamingiz qabul qilindi. Rahmat!")
-
 # 🚀 Botni ishga tushirish
 def main():
     updater = Updater("8344748602:AAHH9AwNRThIsYvOc2Sy3SZM30oTSWpUi8k", use_context=True)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.contact, handle_contact))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
     updater.start_polling()
@@ -100,11 +91,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-git add requirements.txt
-git commit -m "Add requirements.txt for Render"
-git push
-
