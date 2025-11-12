@@ -100,3 +100,11 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+
+git add requirements.txt
+git commit -m "Add requirements.txt for Render"
+git push
+
