@@ -66,7 +66,7 @@ def handle_message(update: Update, context: CallbackContext):
     text = update.message.text
 
     if text == "📩 Contact Admin":
-        update.message.reply_text("You can contact the admin at: @your_admin_username")
+        update.message.reply_text("You can contact the admin at: @Farxod_571")
         return
     elif text == "💬 Send Feedback":
         update.message.reply_text("Please type your feedback below. I’ll forward it to the team.")
