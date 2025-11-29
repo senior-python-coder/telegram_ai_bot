@@ -60,7 +60,6 @@ def start(update: Update, context: CallbackContext):
 
     update.message.reply_text("Welcome! I'm your AI assistant. You can ask me anything in English.", reply_markup=reply_markup)
 
-# 💬 Matnli xabarni OpenRouterga yuborish
 def handle_message(update: Update, context: CallbackContext):
     chat_id = update.message.chat.id
     text = update.message.text
