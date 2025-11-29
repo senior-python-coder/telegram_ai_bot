@@ -4,7 +4,7 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackContext
 
 # 🔐 OpenRouter API KEY
-OPENROUTER_API_KEY = "sk-or-v1-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"  # <--YOUR_OPENAI_KEY
+OPENROUTER_API_KEY = "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"  # <--YOUR_OPENAI_KEY
 MODEL = "openai/gpt-3.5-turbo"
 
 # 📁 SQLite database
@@ -79,7 +79,7 @@ def handle_message(update: Update, context: CallbackContext):
 
 # 🚀 Start the bot
 def main():
-    updater = Updater("YOUR_BOT_TOKEN_HERE", use_context=True)
+    updater = Updater("8344748602:AAHH9AwNRThIsYvOc2Sy3SZM30oTSWpUi8k", use_context=True)
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
